@@ -15,25 +15,29 @@ fn detect_os() -> &'static str {
 }
 
 fn set_base(os: &str) -> PathBuf {
-    if os == "linux" {
-    } else if os == "windows" {
-        if let Some(roaming_path) = BaseDirs::new() {
-            let mc_base_path = roaming_path.preference_dir().to_path_buf();
-            return mc_base_path;
+    if let Some(install_path) = BaseDirs::new() {
+        if os == "linux" {
+            let mc_base_path = install_path.home_dir().to_path_buf();
+            return mc_base_path; 
+        } else if os == "windows" {
+            let mc_base_path = install_path.preference_dir().to_path_buf();
+            return mc_base_path; 
+        } else if os == "macos" {
+            let mc_base_path = install_path.data_dir().to_path_buf();
+            return mc_base_path; 
         }
-    } else if os == "macos" {
-    }
+    };
     return PathBuf::new();
 }
 
-fn set_mc_path(base: &mut PathBuf) {
+fn push_mc_path(base: &mut PathBuf) {
     base.push(".minecraft");
 }
 
 fn main() {
     let os: &str = detect_os();
     let mut base: PathBuf = set_base(&os);
-    set_mc_path(&mut base);
+    push_mc_path(&mut base);
     let game_path: &Path = base.as_path();
 
     if game_path.exists() {
