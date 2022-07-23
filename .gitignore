@@ -1,4 +1,4 @@
 #Lock for libs
 Cargo.lock
 target
-*.jsonn
+*.json
