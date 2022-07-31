@@ -10,7 +10,6 @@ use std::vec::Vec;
 
 use serde_json::Value;
 
-
 fn detect_os() -> &'static str {
     return env::consts::OS;
 }
@@ -49,8 +48,7 @@ fn create_mirrorconfig() {
 
 fn delete_mirrorconfig() {
     assert!(config_check());
-    fs::remove_file("mirrorconfig.json")
-        .expect("Couldn't delete mirrorconfig for some reason");
+    fs::remove_file("mirrorconfig.json").expect("Couldn't delete mirrorconfig for some reason");
 }
 
 fn write_mirrorconfig(config: Value) {
@@ -73,9 +71,9 @@ fn is_number(selection: String) -> bool {
 fn verify_selection(user_input: &String, max_worlds: usize) -> Vec<u8> {
     let mut selections: Vec<u8> = Vec::new();
     let max_possible: u8 = max_worlds as u8;
-    
+
     //Check if only one world was selected
-    if user_input.chars().count() == 1 || !user_input.contains(","){
+    if user_input.chars().count() == 1 || !user_input.contains(",") {
         if is_number(user_input.to_string()) {
             let num: u8 = user_input.parse().unwrap();
 
@@ -106,9 +104,8 @@ fn verify_selection(user_input: &String, max_worlds: usize) -> Vec<u8> {
             }
         }
     }
-    return selections
+    return selections;
 }
-
 
 fn confirm_worlds(worlds_path: &mut PathBuf) -> Vec<PathBuf> {
     let mut worlds: Vec<PathBuf> = Vec::new();
@@ -123,19 +120,22 @@ fn confirm_worlds(worlds_path: &mut PathBuf) -> Vec<PathBuf> {
     println!("{}", "Please enter the number(s)corresponding to which worlds you want to sync, separated by a comma. \nFor example, if you want worlds 1 2 and 3, type '1,2,3' - If you only want to sync one world, just enter a single number.");
 
     for i in 0..worlds.len() {
-        let save: PathBuf = worlds[i].iter()
-            .skip_while(|ending| *ending !="saves")
+        let save: PathBuf = worlds[i]
+            .iter()
+            .skip_while(|ending| *ending != "saves")
             .skip(1)
             .collect();
-        println!("{}). {}", i+1, save.display());
+        println!("{}). {}", i + 1, save.display());
     }
-    
-    io::stdin().read_line(&mut input).expect("Failed to get user input!");
+
+    io::stdin()
+        .read_line(&mut input)
+        .expect("Failed to get user input!");
     // Removes line fracture and newline
     input.truncate(input.len() - 2);
-    
+
     let valid: Vec<u8> = verify_selection(&input, worlds.len());
-    
+
     for i in 0..valid.len() {
         let index: usize = (valid[i] - 1) as usize;
         let x: PathBuf = (&worlds[index]).to_path_buf();
@@ -168,14 +168,12 @@ fn first_time_setup() {
         config_check(),
         "Couldn't create a config file for some reason, exiting..."
     );
-    
-    
+
     //Looking for MC worlds
     let saves_path: &mut PathBuf = &mut game_path;
     saves_path.push("saves");
     let saves: Vec<PathBuf> = confirm_worlds(saves_path);
 
-    
     let config = serde_json::json!({
         "config": {
             "operating_system": os,
@@ -193,6 +191,6 @@ fn main() {
     if config_check() == false {
         first_time_setup();
     } else {
-       first_time_setup();
+        first_time_setup();
     }
 }
