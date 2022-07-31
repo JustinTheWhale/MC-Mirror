@@ -10,6 +10,7 @@ use std::vec::Vec;
 
 use serde_json::Value;
 
+
 fn detect_os() -> &'static str {
     return env::consts::OS;
 }
@@ -46,6 +47,12 @@ fn create_mirrorconfig() {
     };
 }
 
+fn delete_mirrorconfig() {
+    assert!(config_check());
+    fs::remove_file("mirrorconfig.json")
+        .expect("Couldn't delete mirrorconfig for some reason");
+}
+
 fn write_mirrorconfig(config: Value) {
     let _f = fs::write("mirrorconfig.json", config.to_string());
     let _f = match _f {
@@ -54,7 +61,7 @@ fn write_mirrorconfig(config: Value) {
     };
 }
 
-fn is_numeric(selection: String) -> bool {
+fn is_number(selection: String) -> bool {
     for c in selection.chars() {
         if !c.is_numeric() {
             return false;
@@ -63,31 +70,55 @@ fn is_numeric(selection: String) -> bool {
     return true;
 }
 
-fn verify_selection(user_input: &String) -> Vec<i8> {
-    let mut selections: Vec<i8> = Vec::new();
-    if user_input.len() == 1 {
-        if is_numeric(user_input.to_string()) {
-            println!("{}", "Is numeric!");
-            let num: i8 = user_input.parse().unwrap();
-            selections.push(num)
+fn verify_selection(user_input: &String, max_worlds: usize) -> Vec<u8> {
+    let mut selections: Vec<u8> = Vec::new();
+    let max_possible: u8 = max_worlds as u8;
+    
+    //Check if only one world was selected
+    if user_input.chars().count() == 1 || !user_input.contains(","){
+        if is_number(user_input.to_string()) {
+            let num: u8 = user_input.parse().unwrap();
+
+            if num <= max_possible && num != 0 {
+                selections.push(num);
+            } else {
+                delete_mirrorconfig();
+                panic!("Invalid input");
+            }
+        } else {
+            delete_mirrorconfig();
+            panic!("Invalid input");
+        }
+    } else if user_input.contains(",") {
+        let worlds: Vec<&str> = user_input.split(",").collect();
+        for selection in &worlds {
+            if is_number(selection.to_string()) {
+                let num: u8 = selection.parse().unwrap();
+                if num <= max_possible && num != 0 {
+                    selections.push(num);
+                } else {
+                    delete_mirrorconfig();
+                    panic!("Invalid input");
+                }
+            } else {
+                delete_mirrorconfig();
+                panic!("Invalid input");
+            }
         }
     }
-    //Check length of string
-    // if 1 -> check is numeric
-        //If yes check if bigger than 0, return
-        //else panic
-    // if bigger than 1
     return selections
 }
 
 
 fn confirm_worlds(worlds_path: &mut PathBuf) -> Vec<PathBuf> {
     let mut worlds: Vec<PathBuf> = Vec::new();
-    let mut input = String::new();
+    let mut saves: Vec<PathBuf> = Vec::new();
+    let mut input: String = String::new();
 
     for world in fs::read_dir(worlds_path).unwrap() {
         worlds.push(world.unwrap().path())
     }
+
     println!("\n");
     println!("{}", "Please enter the number(s)corresponding to which worlds you want to sync, separated by a comma. \nFor example, if you want worlds 1 2 and 3, type '1,2,3' - If you only want to sync one world, just enter a single number.");
 
@@ -98,12 +129,20 @@ fn confirm_worlds(worlds_path: &mut PathBuf) -> Vec<PathBuf> {
             .collect();
         println!("{}). {}", i+1, save.display());
     }
-
+    
     io::stdin().read_line(&mut input).expect("Failed to get user input!");
-    let valid: Vec<i8> = verify_selection(&input);
-    println!("{:?}", valid);
+    // Removes line fracture and newline
+    input.truncate(input.len() - 2);
+    
+    let valid: Vec<u8> = verify_selection(&input, worlds.len());
+    
+    for i in 0..valid.len() {
+        let index: usize = (valid[i] - 1) as usize;
+        let x: PathBuf = (&worlds[index]).to_path_buf();
+        saves.push(x)
+    }
 
-    return worlds;
+    return saves;
 }
 
 fn first_time_setup() {
@@ -134,22 +173,23 @@ fn first_time_setup() {
     //Looking for MC worlds
     let saves_path: &mut PathBuf = &mut game_path;
     saves_path.push("saves");
-    confirm_worlds(saves_path);
+    let saves: Vec<PathBuf> = confirm_worlds(saves_path);
 
+    
     let config = serde_json::json!({
         "config": {
             "operating_system": os,
-            "custom_game_path": "false",
             "game_path": game_path.to_str(),
-            "timestamp": "false"
+            "timestamp": "false",
+            "saves" : saves,
         }
     });
 
     write_mirrorconfig(config);
 }
 
-
 fn main() {
+    let now = Instant::now();
     if config_check() == false {
         first_time_setup();
     } else {
